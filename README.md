@@ -21,6 +21,27 @@ Ambas as versões imprimem o código C gerado na saída padrão via `System.out.
 
 ---
 
+## Como Compilar e Executar
+
+### Compilar
+```
+javac -d bin src/App.java src/lexer/*.java src/versaoA/*.java src/versaob/*.java
+```
+
+### Executar e salvar saída
+```
+java -cp bin App > saida.txt
+```
+
+### Compilar e executar em um único comando
+```
+javac -d bin src/App.java src/lexer/*.java src/versaoA/*.java src/versaob/*.java ; java -cp bin App > saida.txt
+```
+
+O arquivo `saida.txt` conterá o código C gerado pelo compilador.
+
+---
+
 ## Estrutura da Linguagem LPS1 (vocabulário latino)
 
 ### Comandos
@@ -58,7 +79,9 @@ Ambas as versões imprimem o código C gerado na saída padrão via `System.out.
 
 ---
 
-## Exemplo próprio — *Summa*
+## Exemplos
+
+### Exemplo próprio — *Summa*
 
 Programa que lê `n` e calcula a soma de todos os inteiros de 1 até `n` (*Summa omnium*):
 
@@ -74,38 +97,126 @@ R i # n {
 D s
 ```
 
----
+Código C gerado:
+```c
+#include <stdio.h>
 
-## Exemplos obrigatórios do enunciado
+int main() {
+  int a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z;
+  char str[512];
+  // L n
+  { gets(str); sscanf(str, "%d", &n); }
+  // P s
+  s = 0;
+  // P i
+  i = 1;
+  while (i != n) {
+  // + s s i
+  s = s + i;
+  // + i i 1
+  i = i + 1;
+  }
+  // + s s n
+  s = s + n;
+  // D s
+  printf("%d\n", s);
+}
+```
+
+---
 
 ### Primeiro exemplo — múltiplos de p
 
+Versão traduzida para a linguagem LPS1 latina:
+
 ```
-G n
-G p
-= i 0
-W i # n {
+L n
+L p
+P i 0
+R i # n {
   * a p i
-  P a
+  D a
   + i i 1
+}
+```
+
+Código C gerado:
+```c
+#include <stdio.h>
+
+int main() {
+  int a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z;
+  char str[512];
+  // L n
+  { gets(str); sscanf(str, "%d", &n); }
+  // L p
+  { gets(str); sscanf(str, "%d", &p); }
+  // P i
+  i = 0;
+  while (i != n) {
+  // * a p i
+  a = p * i;
+  // D a
+  printf("%d\n", a);
+  // + i i 1
+  i = i + 1;
+  }
 }
 ```
 
 Lê dois números `n` e `p` e imprime os `n` primeiros múltiplos de `p`, começando por 0.
 
-### Segundo exemplo — teste de divisores
+---
+
+### Segundo exemplo — verificador de primalidade
+
+Versão traduzida para a linguagem LPS1 latina:
 
 ```
-G n
-= i 2
+L n
+P i 2
 % a n i
-W i < n {
-  I a = 0 = i n
+R i < n {
+  S a = 0 P i n
   + i i 1
   % a n i
 }
-I a = 0 P 0
-I a # 0 P 1
+S a = 0 D 0
+S a # 0 D 1
+```
+
+Código C gerado:
+```c
+#include <stdio.h>
+
+int main() {
+  int a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z;
+  char str[512];
+  // L n
+  { gets(str); sscanf(str, "%d", &n); }
+  // P i
+  i = 2;
+  // % a n i
+  a = n % i;
+  while (i < n) {
+  if (a == 0) {
+  // P i
+  i = n;
+  }
+  // + i i 1
+  i = i + 1;
+  // % a n i
+  a = n % i;
+  }
+  if (a == 0) {
+  // D 0
+  printf("%d\n", 0);
+  }
+  if (a != 0) {
+  // D 1
+  printf("%d\n", 1);
+  }
+}
 ```
 
 **O que faz:** lê `n`, inicializa `i = 2` e testa divisores de `n` no intervalo `[2, n-1]`. A cada iteração calcula `a = n % i`. Se encontrar `a = 0` (divisor exato), atribui `i = n` para forçar o fim do loop. Ao final, imprime `0` se encontrou divisor (não é primo) ou `1` se não encontrou (é primo). É um verificador de primalidade simplificado.
@@ -121,7 +232,7 @@ compilador-lps1/
     │   ├── TokenType.java     ← enum com todos os tipos de token
     │   ├── Token.java         ← par (tipo, valor)
     │   └── Lexer.java         ← lê o texto e devolve lista de tokens
-    ├── versaoa/
+    ├── versaoA/
     │   └── ParserA.java       ← parser com geração de código embutida
     ├── versaob/
     │   ├── Node.java          ← interface com método generateC()
@@ -176,7 +287,9 @@ Value           ::= Variable | Number
 | D-07 | Exemplo próprio: *Summa* — soma de 1 até N |
 | D-08 | Implementação em Java (obrigatório pelo enunciado) |
 | D-09 | Saída via `System.out.println` (obrigatório pelo enunciado) |
-| D-10 | Pacote único com subpacotes `lexer`, `versaoa`, `versaob` |
+| D-10 | Pacote único com subpacotes `lexer`, `versaoA`, `versaob` |
+| D-11 | Exemplos do professor traduzidos para a linguagem LPS1 latina |
+| D-12 | Saída padrão salva em `saida.txt` via redirecionamento no terminal |
 
 ---
 

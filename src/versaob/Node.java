@@ -1,3 +1,5 @@
-public interface Node {
+package versaoB;
 
+public interface Node {
+    void generateC();
 }
