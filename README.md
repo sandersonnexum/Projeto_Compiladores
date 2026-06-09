@@ -1,4 +1,4 @@
-# Compilador LPS1 — Projeto B (TCD de Compiladores)
+# Compilador LPS1 — Projeto B (TCD de Compiladores) UniCEUB
 
 ## Sobre o Projeto
 
