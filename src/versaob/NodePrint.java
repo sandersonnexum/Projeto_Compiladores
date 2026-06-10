@@ -1,23 +1,12 @@
 package versaob;
 
-/**
- * Nó do comando D (Dic) — impressão de inteiro na saída padrão.
- *
- * Formato LPS1: D <var|num>
- * Exemplo: "D a" → "printf(\"%d\\n\", a);"
- */
+// Nó de impressão: printf de um valor inteiro (comando D do latino ou P do professor).
 public class NodePrint implements Node {
-
-    /** Valor a ser impresso — nome de variável ou literal numérico. */
-    private String valor;
-
-    public NodePrint(String valor) {
-        this.valor = valor;
-    }
-
-    @Override
-    public void generateC() {
-        System.out.println("  // D " + valor);
+    private String valor, prefixo;
+    public NodePrint(String valor)               { this(valor, "D"); }
+    public NodePrint(String valor, String prefixo){ this.valor=valor; this.prefixo=prefixo; }
+    @Override public void generateC() {
+        System.out.println("  // " + prefixo + " " + valor);
         System.out.println("  printf(\"%d\\n\", " + valor + ");");
     }
 }

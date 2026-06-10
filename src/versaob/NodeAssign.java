@@ -1,26 +1,12 @@
 package versaob;
 
-/**
- * Nó do comando P (Pone) — atribuição de valor.
- *
- * Formato LPS1: P <var> <val>
- * Exemplo: "P i 0" → "i = 0;"
- */
+// Nó de atribuição: variavel = valor  (comando P do latino ou = do professor)
 public class NodeAssign implements Node {
-
-    /** Variável que receberá o valor (ex: "i"). */
-    private String variavel;
-    /** Valor atribuído — variável ou literal (ex: "0"). */
-    private String valor;
-
-    public NodeAssign(String variavel, String valor) {
-        this.variavel = variavel;
-        this.valor = valor;
-    }
-
-    @Override
-    public void generateC() {
-        System.out.println("  // P " + variavel);
+    private String variavel, valor, prefixo;
+    public NodeAssign(String variavel, String valor)                { this(variavel, valor, "P"); }
+    public NodeAssign(String variavel, String valor, String prefixo){ this.variavel=variavel; this.valor=valor; this.prefixo=prefixo; }
+    @Override public void generateC() {
+        System.out.println("  // " + prefixo + " " + variavel + " " + valor);
         System.out.println("  " + variavel + " = " + valor + ";");
     }
 }

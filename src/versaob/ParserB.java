@@ -1,70 +1,34 @@
 package versaob;
-
 import lexer.Token;
 import lexer.TokenType;
 import java.util.ArrayList;
 
-/**
- * Analisador sintático — Versão B (construção de ASA).
- *
- * Consome a lista de tokens produzida pelo {@link lexer.Lexer} e constrói
- * uma ASA (Árvore Sintática Abstrata) composta por nós {@link Node}.
- * A geração de código C é feita separadamente, chamando
- * {@link NodeProgram#generateC()} na raiz retornada por {@link #parse()}.
- *
- * Fluxo:
- *   tokens → parse() → NodeProgram (raiz da ASA) → generateC() → código C
- *
- * Diferença em relação à Versão A: aqui o parser não emite nenhuma saída;
- * ele apenas monta a estrutura de dados. Isso separa análise de geração,
- * tornando o código mais fácil de estender (ex.: adicionar otimizações).
- */
+// Versão B — compilação em duas etapas.
+// Etapa 1 (parse): constrói a Árvore Sintática Abstrata (AST) a partir dos tokens.
+// Etapa 2 (generateC): percorre a AST e gera o código C via polimorfismo (cada Node
+//   sabe como se traduzir, sem lógica de geração espalhada no parser).
 public class ParserB {
-
-    private ArrayList<Token> tokens;
-
-    /** Índice do token sendo analisado no momento. */
+    private final ArrayList<Token> tokens;
     private int pos;
+    public ParserB(ArrayList<Token> tokens) { this.tokens = tokens; this.pos = 0; }
+    private Token atual() { return tokens.get(pos); }
+    private Token consumir() { return tokens.get(pos++); }
 
-    /** Recebe a lista de tokens e inicia na posição 0. */
-    public ParserB(ArrayList<Token> tokens) {
-        this.tokens = tokens;
-        this.pos = 0;
-    }
-
-    /** Retorna o token atual sem avançar o cursor. */
-    private Token atual() {
-        return tokens.get(pos);
-    }
-
-    /** Retorna o token atual e avança o cursor para o próximo. */
-    private Token consumir() {
-        return tokens.get(pos++);
-    }
-
-    /**
-     * Inicia a análise sintática e retorna o nó raiz da ASA.
-     * Consome todos os tokens e cria um {@link NodeProgram} com a lista
-     * de comandos de nível superior.
-     */
+    // Etapa 1: constrói e devolve o nó raiz da AST (NodeProgram).
     public NodeProgram parse() {
-        ArrayList<Node> comandos = new ArrayList<>();
-        while (pos < tokens.size()) {
-            comandos.add(parseComando());
-        }
-        return new NodeProgram(comandos);
+        ArrayList<Node> cmds = new ArrayList<>();
+        while (pos < tokens.size()) cmds.add(parseComando());
+        return new NodeProgram(cmds);
     }
 
-    /**
-     * Identifica o tipo do token atual e retorna o nó ASA correspondente.
-     * É o núcleo do parser — corresponde à regra "comando" da gramática.
-     */
+    // Despacha o token atual para o construtor de nó correspondente.
     private Node parseComando() {
         Token t = atual();
         switch (t.tipo) {
             case LEGE:       return parseLeitura();
             case DIC:        return parseImpressao();
-            case PONE:       return parseAtribuicao();
+            case PONE:       return parseAtribuicaoOuImpressao(); // lookahead P
+            case AEQUALIS:   return parseProfAssign();            // = como assign
             case ADDE:       return parseAritmetica("+");
             case SUBTRAHE:   return parseAritmetica("-");
             case MULTIPLICA: return parseAritmetica("*");
@@ -73,98 +37,73 @@ public class ParserB {
             case SI:         return parseSe();
             case REPETE:     return parseEnquanto();
             case SINISTRA:   return parseBloco();
-            default:
-                throw new RuntimeException("Comando inexistente: " + t.valor);
+            default: throw new RuntimeException("Comando inexistente: " + t.valor);
         }
     }
 
-    /** Comando L: cria nó de leitura de teclado para a variável indicada. */
+    // L ou G — passa o prefixo original pro nó
     private Node parseLeitura() {
-        consumir(); // consome LEGE
-        Token var = consumir(); // variável destino
-        return new NodeGet(var.valor);
+        Token cmd = consumir();
+        Token var = consumir();
+        return new NodeGet(var.valor, cmd.valor); // "L" ou "G"
     }
-
-    /** Comando D: cria nó de impressão para a variável ou literal indicado. */
     private Node parseImpressao() {
-        consumir(); // consome DIC
-        Token val = consumir(); // variável ou literal a imprimir
-        return new NodePrint(val.valor);
+        consumir(); Token val = consumir(); return new NodePrint(val.valor);
     }
 
-    /** Comando P: cria nó de atribuição (variável ← valor). */
-    private Node parseAtribuicao() {
-        consumir(); // consome PONE
-        Token var = consumir(); // variável destino
-        Token val = consumir(); // valor a atribuir
-        return new NodeAssign(var.valor, val.valor);
-    }
-
-    /**
-     * Comandos +, -, *, /, %: cria nó aritmético com destino e dois operandos.
-     * Formato LPS1: <op> <dest> <val1> <val2>
-     */
-    private Node parseAritmetica(String op) {
-        consumir(); // consome o token do operador
-        Token dest = consumir(); // variável destino
-        Token val1 = consumir(); // primeiro operando
-        Token val2 = consumir(); // segundo operando
-        return new NodeArith(op, dest.valor, val1.valor, val2.valor);
-    }
-
-    /**
-     * Comando S: cria nó condicional if.
-     * Formato LPS1: S <var> <op> <val> <comando>
-     */
-    private Node parseSe() {
-        consumir(); // consome SI
-        String varComp = consumir().valor; // variável da comparação
-        String opC     = parseOperador(); // operador convertido para C
-        String val     = consumir().valor; // valor comparado
-        Node cmd       = parseComando();  // corpo do if
-        return new NodeIf(varComp, opC, val, cmd);
-    }
-
-    /**
-     * Comando R: cria nó de repetição while.
-     * Formato LPS1: R <var> <op> <val> <bloco>
-     */
-    private Node parseEnquanto() {
-        consumir(); // consome REPETE
-        String varComp = consumir().valor; // variável da condição
-        String opC     = parseOperador(); // operador convertido para C
-        String val     = consumir().valor; // valor comparado
-        Node corpo     = parseComando();  // corpo do while (geralmente um bloco)
-        return new NodeWhile(varComp, opC, val, corpo);
-    }
-
-    /**
-     * Bloco { }: consome comandos até encontrar '}' e retorna um NodeBlock.
-     */
-    private Node parseBloco() {
-        consumir(); // consome SINISTRA {
-        ArrayList<Node> comandos = new ArrayList<>();
-        while (atual().tipo != TokenType.DEXTRA && pos < tokens.size()) {
-            comandos.add(parseComando());
+    // P com lookahead: 2 valores → assign; 1 valor → print (notação prof)
+    private Node parseAtribuicaoOuImpressao() {
+        consumir(); // consume P
+        boolean ehAtribuicao = (pos + 1 < tokens.size())
+            && (tokens.get(pos + 1).tipo == TokenType.VARIABILIS
+             || tokens.get(pos + 1).tipo == TokenType.NUMERUS);
+        if (ehAtribuicao) {
+            Token var = consumir(); Token val = consumir();
+            return new NodeAssign(var.valor, val.valor);      // prefixo "P"
+        } else {
+            Token val = consumir();
+            return new NodePrint(val.valor, "P");             // P como print (prof)
         }
-        consumir(); // consome DEXTRA }
-        return new NodeBlock(comandos);
     }
 
-    /**
-     * Converte o operador de comparação LPS1 para o equivalente em C.
-     *   =  →  ==
-     *   <  →  <
-     *   #  →  !=
-     */
+    // = como comando de assign (notação do professor)
+    private Node parseProfAssign() {
+        consumir(); // consume =
+        Token var = consumir(); Token val = consumir();
+        return new NodeAssign(var.valor, val.valor, "="); // prefixo "="
+    }
+
+    private Node parseAritmetica(String op) {
+        consumir(); Token dest=consumir(); Token v1=consumir(); Token v2=consumir();
+        return new NodeArith(op, dest.valor, v1.valor, v2.valor);
+    }
+    private Node parseSe() {
+        consumir();
+        String var=consumir().valor; String op=parseOperador(); String val=consumir().valor;
+        Node cmd=parseComando();
+        return new NodeIf(var, op, val, cmd);
+    }
+    private Node parseEnquanto() {
+        consumir();
+        String var=consumir().valor; String op=parseOperador(); String val=consumir().valor;
+        Node corpo=parseComando();
+        return new NodeWhile(var, op, val, corpo);
+    }
+    private Node parseBloco() {
+        consumir();
+        ArrayList<Node> cmds = new ArrayList<>();
+        while (pos < tokens.size() && atual().tipo != TokenType.DEXTRA) cmds.add(parseComando());
+        if (pos >= tokens.size()) throw new RuntimeException("Bloco não fechado: faltou '}'");
+        consumir();
+        return new NodeBlock(cmds);
+    }
     private String parseOperador() {
         Token op = consumir();
         switch (op.tipo) {
             case AEQUALIS: return "==";
             case MINOR:    return "<";
             case DIVERSUS: return "!=";
-            default:
-                throw new RuntimeException("Operador inválido: " + op.valor);
+            default: throw new RuntimeException("Operador inválido: " + op.valor);
         }
     }
 }
